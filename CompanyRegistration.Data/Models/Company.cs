@@ -18,7 +18,7 @@ namespace CompanyRegistration.Data
         [MaxLength(255)]
         public string Email { get; set; }
         [Phone]
-        [MaxLength(15)]
+        [MaxLength(12)]
         public string PhoneNumber { get; set; }
 
         [Url]

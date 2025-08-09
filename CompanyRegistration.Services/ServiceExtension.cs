@@ -15,8 +15,12 @@ namespace CompanyRegistration.Services
             services.AddScoped<IVerificationTokenRepository, VerificationTokenRepository>();
 
             // Service dependencies
-            //services.AddScoped<ICompanyService, CompanyService>();
+            services.AddScoped<ICompanyService, CompanyService>();
             services.AddScoped<IEmailService, EmailService>();
+
+            // file Handler
+            services.AddScoped<IFileService, FileService>();
+
 
 
             services.AddValidatorsFromAssembly(typeof(ServiceExtension).Assembly);

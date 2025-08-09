@@ -26,7 +26,7 @@ namespace CompanyRegistration.Services
                 .MustAsync(BeUniqueEmail).WithMessage("Email address is already registered");
 
             RuleFor(x => x.PhoneNumber)
-                .Matches(@"^\+?[1-9]\d{1,14}$").WithMessage("Invalid phone number format")
+                .Matches(@"^\+?[1-9]\d{1,12}$").WithMessage("Invalid phone number format")
                 .When(x => !string.IsNullOrEmpty(x.PhoneNumber));
 
             RuleFor(x => x.WebsiteUrl)

@@ -2,6 +2,7 @@
 
 using CompanyRegistration.Data;
 using CompanyRegistration.Repository;
+using FluentValidation;
 using Microsoft.Extensions.Configuration;
 using System.Globalization;
 using System.Security.Cryptography;
@@ -17,12 +18,22 @@ namespace CompanyRegistration.Services
         private readonly IFileService _fileService;
         private readonly IConfiguration _configuration;
 
+        // inject validators
+        private readonly IValidator<CompanySignUpRequestDto> _signUpValidator;
+        private readonly IValidator<VerifyOtpRequestDto> _verifyOtpValidator;
+        private readonly IValidator<SetPasswordRequestDto> _setPasswordValidator;
+        private readonly IValidator<LoginRequestDto> _loginValidator;
+
         public CompanyService(
             ICompanyRepository companyRepository,
             IVerificationTokenRepository verificationTokenRepository,
             IEmailService emailService,
             IFileService fileService,
-            IConfiguration configuration
+            IConfiguration configuration,
+            IValidator<CompanySignUpRequestDto> signUpValidator,
+            IValidator<VerifyOtpRequestDto> verifyOtpValidator,
+            IValidator<SetPasswordRequestDto> setPasswordValidator,
+            IValidator<LoginRequestDto> loginValidator
             )
         {
             _companyRepository = companyRepository;
@@ -30,10 +41,28 @@ namespace CompanyRegistration.Services
             _emailService = emailService;
             _fileService = fileService;
             _configuration = configuration;
+            _signUpValidator = signUpValidator;
+            _verifyOtpValidator = verifyOtpValidator;
+            _setPasswordValidator = setPasswordValidator;
+            _loginValidator = loginValidator;
         }
 
         public async Task<APIResult<CompanyResponseDto>> SignUpAsync(CompanySignUpRequestDto requestDto)
         {
+            // Validate request DTO
+            var validationResult = await _signUpValidator.ValidateAsync(requestDto);
+            if (!validationResult.IsValid)
+            {
+                return new APIResult<CompanyResponseDto>
+                {
+                    Success = false,
+                    Errors = validationResult.Errors.Select(e => new APIError
+                    {
+                        Code = "VALIDATION_ERROR",
+                        Message = e.ErrorMessage
+                    }).ToArray()
+                };
+            }
             try
             {
                 // Handle logo upload
@@ -53,6 +82,17 @@ namespace CompanyRegistration.Services
                             Errors = new[] { new APIError { Code = "FILE_ERROR", Message = ex.Message } }
                         };
                     }
+                }
+
+                // chck if email already exist
+                var existingCompany = await _companyRepository.GetByEmailAsync(requestDto.Email);
+                if (existingCompany != null)
+                {
+                    return new APIResult<CompanyResponseDto>
+                    {
+                        Success = false,
+                        Errors = new[] { new APIError { Code = "EMAIL_EXISTS", Message = "Email is already registered" } }
+                    };
                 }
                 var company = new Company
                 {
@@ -113,6 +153,21 @@ namespace CompanyRegistration.Services
 
         public async Task<APIResult<string>> VerifyOtpAsync(VerifyOtpRequestDto requestDto)
         {
+            // validate dto request 
+            var validationResult = await _verifyOtpValidator.ValidateAsync(requestDto);
+            if (!validationResult.IsValid)
+            {
+                return new APIResult<string>
+                {
+                    Success = false,
+                    Errors = validationResult.Errors.Select(e => new APIError
+                    {
+                        Code = "VALIDATION_ERROR",
+                        Message = e.ErrorMessage
+                    }).ToArray(),
+                };
+            
+            }
             try
             {
                 var token = await _verificationTokenRepository.GetValidTokenAsync(
@@ -160,6 +215,20 @@ namespace CompanyRegistration.Services
 
         public async Task<APIResult<string>> SetPasswordAsync(SetPasswordRequestDto requestDto)
         {
+            // validte dto request
+            var validationResult = await _setPasswordValidator.ValidateAsync(requestDto);
+            if (!validationResult.IsValid)
+            {
+                return new APIResult<string>
+                {
+                    Success = false,
+                    Errors = validationResult.Errors.Select(e => new APIError
+                    {
+                        Code = "VALIDATION_ERROR",
+                        Message = e.ErrorMessage
+                    }).ToArray()
+                };
+            }
             try
             {
                 // Verify OTP is still valid 
@@ -212,6 +281,20 @@ namespace CompanyRegistration.Services
         }
         public async Task<APIResult<CompanyResponseDto>> LoginAsync(LoginRequestDto requestDto)
         {
+            // validate dto request
+            var validationResult = await _loginValidator.ValidateAsync(requestDto);
+            if (!validationResult.IsValid)
+            {
+                return new APIResult<CompanyResponseDto>
+                {
+                    Success = false,
+                    Errors = validationResult.Errors.Select(e => new APIError
+                    {
+                        Code = "VALIDATION_ERROR",
+                        Message = e.ErrorMessage
+                    }).ToArray()
+                };
+            }
             try
             {
                 var company = await _companyRepository.GetByEmailAsync(requestDto.Email);
@@ -284,8 +367,11 @@ namespace CompanyRegistration.Services
         // Helper methods
         private string GenerateOtpCode()
         {
-            var random = new Random();
-            return random.Next(100000, 999999).ToString();
+            using var rng = RandomNumberGenerator.Create();
+            var bytes = new byte[4];
+            rng.GetBytes(bytes);
+            var randomNumber = Math.Abs(BitConverter.ToInt32(bytes, 0));
+            return (randomNumber % 900000 + 100000).ToString(); // Ensures 6 digits
         }
 
         private string HashPassword(string password)
