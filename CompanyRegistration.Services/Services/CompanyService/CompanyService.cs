@@ -186,8 +186,8 @@ namespace CompanyRegistration.Services
                 }
 
                 // Mark token as used
-                token.IsUsed = true;
-                await _verificationTokenRepository.UpdateAsync(token);
+                //token.IsUsed = true;
+                //await _verificationTokenRepository.UpdateAsync(token);
 
                 // Mark company email as verified
                 var company = await _companyRepository.GetByIdAsync(requestDto.CompanyId);
@@ -260,6 +260,10 @@ namespace CompanyRegistration.Services
                 // Hash password and save
                 company.PasswordHash = HashPassword(requestDto.NewPassword);
                 await _companyRepository.UpdateAsync(company);
+
+                // Mark the token as used now
+                token.IsUsed = true;
+                await _verificationTokenRepository.UpdateAsync(token);
 
                 // Invalidate all verification tokens
                 await _verificationTokenRepository.InvalidateTokensAsync(requestDto.CompanyId, VerificationTokenType.EmailVerification);

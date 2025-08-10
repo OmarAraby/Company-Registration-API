@@ -65,7 +65,7 @@ namespace CompanyRegistration.API.Controllers
 
         // get company by id
         [HttpGet("{id:int}")]
-        [Authorize]
+        //[Authorize]
         public async Task<Results<Ok<APIResult<CompanyResponseDto>>, NotFound<APIResult<CompanyResponseDto>>>>
             GetCompany(int id)
         {

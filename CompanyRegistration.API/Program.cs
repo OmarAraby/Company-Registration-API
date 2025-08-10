@@ -2,6 +2,7 @@ using CompanyRegistration.Data;
 using CompanyRegistration.Repository;
 using CompanyRegistration.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -36,6 +37,21 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseAuthorization();
+
+#region HandleFiles
+
+// handle image upload
+//if folder doesn't exist create it
+var imageFolderPath = Path.Combine(Directory.GetCurrentDirectory(), "Upload");
+Directory.CreateDirectory(imageFolderPath);
+
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(imageFolderPath),
+    RequestPath = "/api/static-files"
+});
+#endregion
 
 app.MapControllers();
 
